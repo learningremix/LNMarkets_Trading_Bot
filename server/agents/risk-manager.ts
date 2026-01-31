@@ -3,8 +3,8 @@
  * Manages position sizing, stop losses, and overall portfolio risk
  */
 
-import { BaseAgent, AgentConfig } from './base-agent';
-import { LNMarketsService, Position } from '../services/lnmarkets';
+import { BaseAgent, type AgentConfig } from './base-agent';
+import { LNMarketsService, type Position } from '../services/lnmarkets';
 
 export interface RiskParameters {
   maxPositionSizePercent: number; // Max % of balance per position
@@ -110,7 +110,8 @@ export class RiskManagerAgent extends BaseAgent {
       // Emit alerts
       for (const alert of assessment.alerts) {
         this.emit('alert', alert);
-        this.log(alert.level === 'critical' ? 'error' : alert.level, alert.message);
+        const logLevel = alert.level === 'critical' ? 'error' : alert.level === 'warning' ? 'warn' : 'info';
+        this.log(logLevel, alert.message);
       }
 
       // Auto-actions for critical alerts

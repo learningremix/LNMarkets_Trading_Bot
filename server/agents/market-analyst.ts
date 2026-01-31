@@ -3,12 +3,12 @@
  * Performs technical analysis and generates trading signals
  */
 
-import { BaseAgent, AgentConfig } from './base-agent';
+import { BaseAgent, type AgentConfig } from './base-agent';
 import { LNMarketsService, getLNMarketsService } from '../services/lnmarkets';
 import {
   TechnicalAnalysisService,
   getTechnicalAnalysisService,
-  TechnicalSummary,
+  type TechnicalSummary,
 } from '../services/technical-analysis';
 
 export interface MarketAnalysis {
@@ -47,9 +47,10 @@ export class MarketAnalystAgent extends BaseAgent {
       intervalMs: config.intervalMs || 5 * 60 * 1000, // 5 minutes default
     });
     this.agentConfig = {
-      analysisIntervals: ['1h', '4h'],
-      minConfidence: 60,
-      ...config,
+      id: config.id,
+      name: config.name,
+      analysisIntervals: config.analysisIntervals || ['1h', '4h'],
+      minConfidence: config.minConfidence ?? 60,
     };
     this.lnMarkets = getLNMarketsService();
     this.ta = getTechnicalAnalysisService();

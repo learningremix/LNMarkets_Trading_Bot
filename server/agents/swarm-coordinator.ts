@@ -4,11 +4,11 @@
  */
 
 import { EventEmitter } from 'events';
-import { LNMarketsService, createLNMarketsService, LNMarketsConfig } from '../services/lnmarkets';
+import { LNMarketsService, createLNMarketsService, type LNMarketsConfig } from '../services/lnmarkets';
 import { BaseAgent } from './base-agent';
 import { MarketAnalystAgent } from './market-analyst';
 import { RiskManagerAgent } from './risk-manager';
-import { ExecutionAgent, TradeSignal } from './execution-agent';
+import { ExecutionAgent, type TradeSignal } from './execution-agent';
 import { ResearcherAgent } from './researcher-agent';
 
 export interface SwarmConfig {

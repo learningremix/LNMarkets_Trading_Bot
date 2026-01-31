@@ -295,14 +295,15 @@ export class TechnicalAnalysisService {
     const ema9CrossEma21 = ema9 > ema21 ? 'above' : 'below';
 
     let signal: 'buy' | 'sell' | 'neutral' = 'neutral';
+    const histogram = macd?.histogram ?? 0;
 
-    if (rsi < 30 && macd?.histogram > 0 && ema9CrossEma21 === 'above') {
+    if (rsi < 30 && histogram > 0 && ema9CrossEma21 === 'above') {
       signal = 'buy';
-    } else if (rsi > 70 && macd?.histogram < 0 && ema9CrossEma21 === 'below') {
+    } else if (rsi > 70 && histogram < 0 && ema9CrossEma21 === 'below') {
       signal = 'sell';
-    } else if (rsi < 40 && macd?.histogram > 0) {
+    } else if (rsi < 40 && histogram > 0) {
       signal = 'buy';
-    } else if (rsi > 60 && macd?.histogram < 0) {
+    } else if (rsi > 60 && histogram < 0) {
       signal = 'sell';
     }
 

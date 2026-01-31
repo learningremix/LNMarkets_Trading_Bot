@@ -23,6 +23,7 @@ app.use((_, __, next) => DatabaseContext.run(db, next));
 
 app.use(
   createRequestHandler({
+    // @ts-ignore - virtual module resolved by Vite
     build: () => import("virtual:react-router/server-build"),
     getLoadContext() {
       return {

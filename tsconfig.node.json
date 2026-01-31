@@ -1,6 +1,6 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["server.js", "vite.config.ts"],
+  "include": ["server.js", "vite.config.ts", "server/**/*.ts", "server/**/*.d.ts", "database/**/*.ts"],
   "compilerOptions": {
     "composite": true,
     "strict": true,
@@ -8,6 +8,15 @@
     "lib": ["ES2022"],
     "target": "ES2022",
     "module": "ES2022",
-    "moduleResolution": "bundler"
+    "moduleResolution": "bundler",
+    "verbatimModuleSyntax": false,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "~/database/*": ["./database/*"],
+      "~/*": ["./app/*"]
+    },
+    "esModuleInterop": true
   }
 }

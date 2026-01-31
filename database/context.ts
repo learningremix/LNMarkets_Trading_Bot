@@ -1,17 +1,19 @@
-import { AsyncLocalStorage } from "node:async_hooks";
+/**
+ * Database Context - Async local storage for database connection
+ */
 
-import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import { AsyncLocalStorage } from 'async_hooks';
+import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import type * as schema from './schema';
 
-import * as schema from "./schema";
+export type Database = PostgresJsDatabase<typeof schema>;
 
-export const DatabaseContext = new AsyncLocalStorage<
-  PostgresJsDatabase<typeof schema>
->();
+export const DatabaseContext = new AsyncLocalStorage<Database>();
 
-export function database() {
+export function getDatabase(): Database {
   const db = DatabaseContext.getStore();
   if (!db) {
-    throw new Error("DatabaseContext not set");
+    throw new Error('Database not available in current context');
   }
   return db;
 }

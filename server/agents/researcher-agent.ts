@@ -3,7 +3,7 @@
  * Gathers market news, sentiment, and on-chain data for Bitcoin analysis
  */
 
-import { BaseAgent, AgentConfig } from './base-agent';
+import { BaseAgent, type AgentConfig } from './base-agent';
 
 export interface NewsItem {
   id: string;
@@ -70,8 +70,11 @@ export class ResearcherAgent extends BaseAgent {
     });
 
     this.researchConfig = {
-      enableOnChain: false,
-      ...config,
+      id: config.id,
+      name: config.name,
+      enableOnChain: config.enableOnChain ?? false,
+      newsApiKey: config.newsApiKey,
+      cryptoCompareKey: config.cryptoCompareKey,
     };
   }
 
@@ -220,7 +223,7 @@ export class ResearcherAgent extends BaseAgent {
       // Public Fear & Greed API
       const response = await fetch('https://api.alternative.me/fng/?limit=1');
       if (response.ok) {
-        const data = await response.json();
+        const data: any = await response.json();
         return parseInt(data.data[0].value, 10);
       }
     } catch (error) {

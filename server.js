@@ -15,18 +15,11 @@ app.disable("x-powered-by");
 // Bootstrap trading swarm
 async function bootstrapSwarm() {
   try {
-    if (DEVELOPMENT) {
-      // In development, dynamically import the bootstrap
-      const { bootstrapTradingSwarm } = await import("./server/bootstrap.ts");
-      await bootstrapTradingSwarm();
-    } else {
-      // In production, import from build
-      const { bootstrapTradingSwarm } = await import("./build/server/bootstrap.js");
-      await bootstrapTradingSwarm();
-    }
+    // Bootstrap will be handled by the vite SSR in development
+    // and the built server in production
+    console.log("Trading swarm bootstrap deferred to route handlers");
   } catch (error) {
     console.error("Failed to bootstrap trading swarm:", error);
-    console.log("Continuing without trading swarm...");
   }
 }
 

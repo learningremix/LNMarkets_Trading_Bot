@@ -56,8 +56,10 @@ export interface Candle {
   volume: number;
 }
 
+type LNClient = ReturnType<typeof createHttpClient>;
+
 export class LNMarketsService {
-  private client: ReturnType<typeof createHttpClient>;
+  private client: LNClient;
   private isAuthenticated: boolean;
 
   constructor(config?: LNMarketsConfig) {
@@ -66,7 +68,7 @@ export class LNMarketsService {
         key: config.key,
         secret: config.secret,
         passphrase: config.passphrase,
-        network: config.network || 'mainnet',
+        network: config.network === 'testnet' ? 'testnet4' : 'mainnet',
       });
       this.isAuthenticated = true;
     } else {
@@ -88,20 +90,20 @@ export class LNMarketsService {
 
   async getServerTime(): Promise<number> {
     const result = await this.client.time();
-    return result.time;
+    return (result as any).time || Date.now();
   }
 
   async getTicker(): Promise<MarketData> {
-    const ticker = await this.client.futures.getTicket();
+    const ticker: any = await this.client.futures.getTicket();
     return {
-      index: ticker.index,
-      lastPrice: ticker.lastPrice,
-      bid: ticker.bid,
-      ask: ticker.ask,
-      high24h: ticker.high24h,
-      low24h: ticker.low24h,
-      volume24h: ticker.volume24h,
-      change24h: ticker.change24h,
+      index: ticker.index || 0,
+      lastPrice: ticker.lastPrice || ticker.last_price || 0,
+      bid: ticker.bid || 0,
+      ask: ticker.ask || 0,
+      high24h: ticker.high24h || ticker.high || 0,
+      low24h: ticker.low24h || ticker.low || 0,
+      volume24h: ticker.volume24h || ticker.volume || 0,
+      change24h: ticker.change24h || 0,
     };
   }
 
@@ -110,30 +112,34 @@ export class LNMarketsService {
     to: string;
     interval: '1m' | '5m' | '15m' | '30m' | '1h' | '4h' | '1d' | '1w';
   }): Promise<Candle[]> {
-    const candles = await this.client.futures.getCandles({
+    const candles: any = await (this.client.futures.getCandles as any)({
       from: params.from,
       to: params.to,
-      interval: params.interval,
+      resolution: params.interval,
     });
 
+    if (!Array.isArray(candles)) {
+      return [];
+    }
+
     return candles.map((c: any) => ({
-      time: c.time,
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
-      volume: c.volume,
+      time: c.time || c.t || 0,
+      open: c.open || c.o || 0,
+      high: c.high || c.h || 0,
+      low: c.low || c.l || 0,
+      close: c.close || c.c || 0,
+      volume: c.volume || c.v || 0,
     }));
   }
 
   async getOraclePrice(): Promise<{ price: number; index: number }> {
-    const [lastPrice, index] = await Promise.all([
+    const [lastPrice, indexData]: any = await Promise.all([
       this.client.oracle.getLastPrice(),
       this.client.oracle.getIndex(),
     ]);
     return {
-      price: lastPrice.price,
-      index: index.index,
+      price: lastPrice?.lastPrice || lastPrice?.price || 0,
+      index: indexData?.index || 0,
     };
   }
 
@@ -151,11 +157,11 @@ export class LNMarketsService {
 
   async getAccount() {
     this.ensureAuthenticated();
-    const account = await this.client.account.get();
+    const account: any = await this.client.account.get();
     return {
-      balance: account.balance,
-      syntheticUsdBalance: account.syntheticUsdBalance,
-      username: account.username,
+      balance: account.balance || 0,
+      syntheticUsdBalance: account.syntheticUsdBalance || account.synthetic_usd_balance || 0,
+      username: account.username || '',
     };
   }
 
@@ -178,40 +184,29 @@ export class LNMarketsService {
     if (params.quantity) tradeParams.quantity = params.quantity;
     if (params.margin) tradeParams.margin = params.margin;
     if (params.price && params.type === 'limit') tradeParams.price = params.price;
-    if (params.takeprofit) tradeParams.takeprofit = params.takeprofit;
-    if (params.stoploss) tradeParams.stoploss = params.stoploss;
+    if (params.takeprofit) tradeParams.takeProfitPrice = params.takeprofit;
+    if (params.stoploss) tradeParams.stopLossPrice = params.stoploss;
 
-    const trade = await this.client.futures.isolated.newTrade(tradeParams);
+    const trade: any = await this.client.futures.isolated.newTrade(tradeParams);
 
-    return {
-      id: trade.id,
-      side: trade.side,
-      quantity: trade.quantity,
-      margin: trade.margin,
-      leverage: trade.leverage,
-      entryPrice: trade.entryPrice || trade.price || 0,
-      liquidationPrice: trade.liquidation || 0,
-      pl: trade.pl || 0,
-      plPercent: trade.plPercent || 0,
-      createdAt: new Date(trade.createdAt || Date.now()),
-    };
+    return this.mapToPosition(trade);
   }
 
   async getOpenIsolatedOrders(): Promise<Position[]> {
     this.ensureAuthenticated();
-    const trades = await this.client.futures.isolated.getOpenTrades();
-    return trades.map(this.mapToPosition);
+    const trades: any = await this.client.futures.isolated.getOpenTrades();
+    return Array.isArray(trades) ? trades.map(this.mapToPosition) : [];
   }
 
   async getRunningIsolatedPositions(): Promise<Position[]> {
     this.ensureAuthenticated();
-    const trades = await this.client.futures.isolated.getRunningTrades();
-    return trades.map(this.mapToPosition);
+    const trades: any = await this.client.futures.isolated.getRunningTrades();
+    return Array.isArray(trades) ? trades.map(this.mapToPosition) : [];
   }
 
   async getClosedIsolatedTrades(params?: { from?: string; to?: string }) {
     this.ensureAuthenticated();
-    return this.client.futures.isolated.getClosedTrades(params);
+    return this.client.futures.isolated.getClosedTrades(params as any);
   }
 
   async closeIsolatedPosition(id: string): Promise<void> {
@@ -231,12 +226,12 @@ export class LNMarketsService {
 
   async updateIsolatedTakeProfit(id: string, takeprofit: number): Promise<void> {
     this.ensureAuthenticated();
-    await this.client.futures.isolated.updateTakeprofit({ id, takeprofit });
+    await this.client.futures.isolated.updateTakeprofit({ id, takeProfitPrice: takeprofit } as any);
   }
 
   async updateIsolatedStopLoss(id: string, stoploss: number): Promise<void> {
     this.ensureAuthenticated();
-    await this.client.futures.isolated.updateStoploss({ id, stoploss });
+    await this.client.futures.isolated.updateStoploss({ id, stopLossPrice: stoploss } as any);
   }
 
   async addIsolatedMargin(id: string, amount: number): Promise<void> {
@@ -273,7 +268,7 @@ export class LNMarketsService {
     price?: number;
   }): Promise<any> {
     this.ensureAuthenticated();
-    return this.client.futures.cross.newOrder(params);
+    return this.client.futures.cross.newOrder(params as any);
   }
 
   async getCrossPosition() {
@@ -303,19 +298,19 @@ export class LNMarketsService {
 
   // ============ SYNTHETIC USD ============
 
-  async getSyntheticUsdPrice(side: 'buy' | 'sell', quantity: number) {
+  async getSyntheticUsdPrice() {
     this.ensureAuthenticated();
-    return this.client.syntheticUsd.getBestPrice({ side, quantity });
+    return this.client.syntheticUsd.getBestPrice();
   }
 
   async swapToSyntheticUsd(quantity: number) {
     this.ensureAuthenticated();
-    return this.client.syntheticUsd.newSwap({ side: 'buy', quantity });
+    return this.client.syntheticUsd.newSwap({ side: 'buy', quantity } as any);
   }
 
   async swapFromSyntheticUsd(quantity: number) {
     this.ensureAuthenticated();
-    return this.client.syntheticUsd.newSwap({ side: 'sell', quantity });
+    return this.client.syntheticUsd.newSwap({ side: 'sell', quantity } as any);
   }
 
   // ============ DEPOSITS & WITHDRAWALS ============
@@ -343,16 +338,16 @@ export class LNMarketsService {
   // ============ HELPERS ============
 
   private mapToPosition = (trade: any): Position => ({
-    id: trade.id,
-    side: trade.side,
-    quantity: trade.quantity,
-    margin: trade.margin,
-    leverage: trade.leverage,
-    entryPrice: trade.entryPrice || trade.price || 0,
-    liquidationPrice: trade.liquidation || 0,
+    id: trade.id || '',
+    side: trade.side || 'buy',
+    quantity: trade.quantity || 0,
+    margin: trade.margin || 0,
+    leverage: trade.leverage || 1,
+    entryPrice: trade.entryPrice || trade.entry_price || trade.price || 0,
+    liquidationPrice: trade.liquidation || trade.liquidationPrice || 0,
     pl: trade.pl || 0,
-    plPercent: trade.plPercent || 0,
-    createdAt: new Date(trade.createdAt || Date.now()),
+    plPercent: trade.plPercent || trade.pl_percent || 0,
+    createdAt: new Date(trade.createdAt || trade.created_at || Date.now()),
   });
 }
 

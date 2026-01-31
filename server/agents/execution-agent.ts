@@ -3,10 +3,10 @@
  * Handles order execution, position management, and trade lifecycle
  */
 
-import { BaseAgent, AgentConfig } from './base-agent';
-import { LNMarketsService, Position, TradeParams } from '../services/lnmarkets';
-import { RiskManagerAgent, PositionSizing } from './risk-manager';
-import { MarketAnalystAgent, MarketAnalysis } from './market-analyst';
+import { BaseAgent, type AgentConfig } from './base-agent';
+import { LNMarketsService, type Position, type TradeParams } from '../services/lnmarkets';
+import { RiskManagerAgent, type PositionSizing } from './risk-manager';
+import { MarketAnalystAgent, type MarketAnalysis } from './market-analyst';
 
 export interface TradeSignal {
   id: string;
@@ -33,9 +33,13 @@ export interface ExecutedTrade {
   pnl?: number;
 }
 
-export interface ExecutionConfig extends Partial<AgentConfig> {
+export interface ExecutionConfig {
   id: string;
   name: string;
+  enabled?: boolean;
+  intervalMs?: number;
+  maxRetries?: number;
+  timeoutMs?: number;
   autoExecute: boolean;
   minConfidence: number;
   maxOpenPositions: number;
@@ -53,16 +57,23 @@ export class ExecutionAgent extends BaseAgent {
 
   constructor(config: ExecutionConfig) {
     super({
-      ...config,
+      id: config.id,
+      name: config.name,
+      enabled: config.enabled ?? true,
       intervalMs: config.intervalMs || 10 * 1000, // 10 seconds default
+      maxRetries: config.maxRetries ?? 3,
+      timeoutMs: config.timeoutMs ?? 30000,
     });
 
     this.execConfig = {
-      autoExecute: false,
-      minConfidence: 70,
-      maxOpenPositions: 3,
-      cooldownMs: 60 * 1000, // 1 minute cooldown
-      ...config,
+      id: config.id,
+      name: config.name,
+      enabled: config.enabled ?? true,
+      intervalMs: config.intervalMs || 10 * 1000,
+      autoExecute: config.autoExecute ?? false,
+      minConfidence: config.minConfidence ?? 70,
+      maxOpenPositions: config.maxOpenPositions ?? 3,
+      cooldownMs: config.cooldownMs ?? 60 * 1000, // 1 minute cooldown
     };
   }
 
@@ -357,7 +368,7 @@ export class ExecutionAgent extends BaseAgent {
     return this.execConfig.autoExecute;
   }
 
-  getConfig(): ExecutionConfig {
+  getExecutionConfig(): ExecutionConfig {
     return { ...this.execConfig };
   }
 
